@@ -1,21 +1,40 @@
-// import axios from "axios";
-// import dotenv from "dotenv";
-// import cors from "cors";
-// import app from "./index.mjs";
-// import express from "express";
-
 const express = require("express");
 const dotenv = require("dotenv");
 const axios = require("axios");
 const cors = require("cors");
+const { v4: uuidv4 } = require("uuid");
+const mongoose = require("mongoose");
+const User = require("./models/User");
+const FavoriteStation = require("./models/FavoriteStation");
 
 dotenv.config();
-const API_KEY = process.env.VITE_API_KEY;
+const API_KEY = process.env.BUS_API_KEY;
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.send("Hello World!");
+router.get("/", async (req, res) => {
+  //클라이언트에서 전송한 uuid가 있는지 확인
+  console.log("req.cookies:", req.cookies);
+  const userUUID = req.cookies && req.cookies.userUUID;
+
+  if (!userUUID) {
+    const newUserUUID = uuidv4();
+    res.cookie("userUUID", newUserUUID, { maxAge: 900000, httpOnly: true });
+
+    try {
+      const newUser = new User({ uuid: newUserUUID });
+      await newUser.save();
+      res.json({ uuid: newUserUUID });
+      return;
+    } catch (error) {
+      console.error("Error adding user to the database: ", error);
+    }
+  } else {
+    console.log("이미 uuid 있음");
+  }
+
+  // res.send("Hello World!");
+  // res.send(results).status(200);
 });
 
 /**정류소 검색 후 키워드에 맞는 정류소 리스트 조회 */
@@ -93,6 +112,78 @@ router.get("/searchBusStationPos", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error: searchBusStationPos");
+  }
+});
+
+/**즐겨찾는 정류장 리스트 조회 */
+router.get("/bookmarks", async (req, res) => {
+  const userUUID = req.cookies && req.cookies.userUUID;
+
+  if (!userUUID) {
+    return res.status(400).send("User 정보가 없습니다.");
+  }
+
+  try {
+    const favoriteStation = await FavoriteStation.findOne({ uuid: userUUID });
+
+    if (!favoriteStation || !favoriteStation.bookmarks) {
+      return res.json([]);
+    }
+    return res.json(favoriteStation.bookmarks);
+  } catch (error) {
+    console.error("Error fetching Bookmarks: ", error);
+    return res.status(500).send("Internal Server Error: get bookmarks");
+  }
+});
+
+/**즐겨찾는 정류장 추가 */
+router.post("/bookmakrs", async (req, res) => {
+  const userUUID = req.cookies && req.cookies.userUUID;
+  if (!userUUID) {
+    return res.status(400).send("User 정보가 없습니다.");
+  }
+
+  if (!req.body) {
+    return res.status(400).send("station 정보가 없습니다.");
+  }
+
+  try {
+    let favoriteStation = await FavoriteStation.findOne({ uuid: userUUID });
+    if (!favoriteStation) {
+      favoriteStation = new FavoriteStation({ uuid: userUUID, bookmarks: [] });
+    }
+    favoriteStation.bookmarks.push(req.body);
+    await favoriteStation.save();
+
+    return res.send("Station added to bookmarks");
+  } catch (error) {
+    console.error("Error adding bookmark:", error);
+    return res.status(500).send("Internal Server Error: post bookmarks");
+  }
+});
+
+/**즐겨찾는 정류장 삭제 */
+router.delete("/bookmarks/:stationId", async (req, res) => {
+  const userUUID = req.cookies && req.cookies.userUUID;
+
+  if (!userUUID) {
+    return res.status(400).send("User 정보가 없습니다.");
+  }
+
+  const stationId = req.params.stationId;
+
+  try {
+    const favoriteStation = await FavoriteStation.findOne({ uuid: userUUID });
+
+    favoriteStation.bookmarks = favoriteStation.bookmarks.filter(
+      (station) => station.stId !== stationId
+    );
+    await favoriteStation.save();
+
+    return res.send("Station removed from bookmarks");
+  } catch (error) {
+    console.error("Error removing bookmark:", error);
+    return res.status(500).send("Internal Server Error: delete bookmarks");
   }
 });
 
