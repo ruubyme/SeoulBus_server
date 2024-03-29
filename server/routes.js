@@ -119,9 +119,9 @@ router.get("/searchBusStationPos", async (req, res) => {
 router.get("/bookmarks", async (req, res) => {
   const userUUID = req.cookies && req.cookies.userUUID;
 
-  if (!userUUID) {
-    return res.status(400).send("User 정보가 없습니다.");
-  }
+  // if (!userUUID) {
+  //   return res.status(400).send("User 정보가 없습니다.");
+  // }
 
   try {
     const favoriteStation = await FavoriteStation.findOne({ uuid: userUUID });
