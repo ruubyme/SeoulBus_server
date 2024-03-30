@@ -32,9 +32,6 @@ router.get("/", async (req, res) => {
   } else {
     console.log("이미 uuid 있음");
   }
-
-  // res.send("Hello World!");
-  // res.send(results).status(200);
 });
 
 /**정류소 검색 후 키워드에 맞는 정류소 리스트 조회 */
@@ -118,10 +115,6 @@ router.get("/searchBusStationPos", async (req, res) => {
 /**즐겨찾는 정류장 리스트 조회 */
 router.get("/bookmarks", async (req, res) => {
   const userUUID = req.cookies && req.cookies.userUUID;
-
-  // if (!userUUID) {
-  //   return res.status(400).send("User 정보가 없습니다.");
-  // }
 
   try {
     const favoriteStation = await FavoriteStation.findOne({ uuid: userUUID });

@@ -14,10 +14,13 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "https://d2x6tz3lkbvne6.cloudfront.net/"],
     credentials: true,
   })
 );
+app.use((req, res) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+});
 app.use("/", routes);
 
 connectDatabase();
